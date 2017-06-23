@@ -9,10 +9,12 @@ import akka.actor.ActorRef;
 import akka.actor.ActorSystem;
 import akka.actor.PoisonPill;
 import akka.testkit.javadsl.TestKit;
+
+import scala.concurrent.duration.FiniteDuration;
+
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
-import scala.concurrent.duration.FiniteDuration;
 
 import com.mjduan.project.example3.src.DeviceExample3;
 import com.mjduan.project.example3.src.DeviceGroupQuery;
@@ -88,7 +90,7 @@ public class DeviceGroupQueryTest {
     }
 
     @Test
-    public void test_returnDeviceNotAvailableIfDeviceStopsBeforeAnswering(){
+    public void test_returnDeviceNotAvailableIfDeviceStopsBeforeAnswering() {
         TestKit requester = new TestKit(actorSystem);
 
         TestKit device1 = new TestKit(actorSystem);
@@ -105,7 +107,7 @@ public class DeviceGroupQueryTest {
         Assert.assertEquals(0L, device2.expectMsgClass(DeviceExample3.ReadTemperature.class).getRequestId());
 
         queryGroupActor.tell(new DeviceExample3.RespondTemperature(0L, Optional.of(3.0)), device1.getRef());
-        device2.getRef().tell(PoisonPill.getInstance(),ActorRef.noSender());
+        device2.getRef().tell(PoisonPill.getInstance(), ActorRef.noSender());
 
         DeviceGroupQuery.RespondAllTemperatures respondAllTemperatures = requester.expectMsgClass(DeviceGroupQuery.RespondAllTemperatures.class);
         Assert.assertEquals(2L, respondAllTemperatures.getRequestId());
@@ -117,7 +119,7 @@ public class DeviceGroupQueryTest {
     }
 
     @Test
-    public void test_returnTemperatureReadingEvenIfDeviceStopsAfterAnswering(){
+    public void test_returnTemperatureReadingEvenIfDeviceStopsAfterAnswering() {
         TestKit requester = new TestKit(actorSystem);
 
         TestKit device1 = new TestKit(actorSystem);
@@ -135,8 +137,8 @@ public class DeviceGroupQueryTest {
 
         queryGroupActor.tell(new DeviceExample3.RespondTemperature(0L, Optional.of(2.0)), device1.getRef());
         queryGroupActor.tell(new DeviceExample3.RespondTemperature(0L, Optional.of(3.0)), device2.getRef());
-        device2.getRef().tell(PoisonPill.getInstance(),ActorRef.noSender());
-        device1.getRef().tell(PoisonPill.getInstance(),ActorRef.noSender());
+        device2.getRef().tell(PoisonPill.getInstance(), ActorRef.noSender());
+        device1.getRef().tell(PoisonPill.getInstance(), ActorRef.noSender());
 
         DeviceGroupQuery.RespondAllTemperatures respondAllTemperatures = requester.expectMsgClass(DeviceGroupQuery.RespondAllTemperatures.class);
         Assert.assertEquals(1L, respondAllTemperatures.getRequestId());
@@ -147,7 +149,7 @@ public class DeviceGroupQueryTest {
     }
 
     @Test
-    public void test_returnDeviceTimedOutIfDeviceDoesNotAnswerInTime(){
+    public void test_returnDeviceTimedOutIfDeviceDoesNotAnswerInTime() {
         TestKit requester = new TestKit(actorSystem);
 
         TestKit device1 = new TestKit(actorSystem);
@@ -165,7 +167,7 @@ public class DeviceGroupQueryTest {
 
         queryGroupActor.tell(new DeviceExample3.RespondTemperature(0L, Optional.of(2.0)), device1.getRef());
 
-        DeviceGroupQuery.RespondAllTemperatures respondAllTemperatures = requester.expectMsgClass(FiniteDuration.create(5,TimeUnit.SECONDS),DeviceGroupQuery.RespondAllTemperatures.class);
+        DeviceGroupQuery.RespondAllTemperatures respondAllTemperatures = requester.expectMsgClass(FiniteDuration.create(5, TimeUnit.SECONDS), DeviceGroupQuery.RespondAllTemperatures.class);
         Assert.assertEquals(1L, respondAllTemperatures.getRequestId());
 
         DeviceGroupQuery.Temperature temperature = (DeviceGroupQuery.Temperature) respondAllTemperatures.getTemperatureReadingMap().get("device1");

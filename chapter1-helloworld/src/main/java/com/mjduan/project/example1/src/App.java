@@ -15,11 +15,11 @@ public class App extends AbstractActor {
     @Override
     public Receive createReceive() {
         return ReceiveBuilder.create()
-                .match(Request.class,request -> {
-                    LOG.info("Rec {}",request);
+                .match(Request.class, request -> {
+                    LOG.info("Rec {}", request);
                     name = request.getName();
                 })
-                .matchAny(any->{
+                .matchAny(any -> {
                     LOG.error("Rec unknown msg");
                 })
                 .build();

@@ -12,9 +12,11 @@ import akka.actor.Props;
 import akka.actor.Terminated;
 import akka.event.Logging;
 import akka.event.LoggingAdapter;
+
+import scala.concurrent.duration.FiniteDuration;
+
 import lombok.Getter;
 import lombok.Setter;
-import scala.concurrent.duration.FiniteDuration;
 
 /**
  * Hans  2017-06-22 20:51
@@ -47,9 +49,9 @@ public class DeviceGroupQuery extends AbstractActor {
 
     public Receive waitingForReplies(Map<String, TemperatureReading> repliesSoFar, Set<ActorRef> stillWaiting) {
         return receiveBuilder()
-                .match(DeviceExample3.RespondTemperature.class, r -> processRespondTemperature(r,repliesSoFar,stillWaiting))
-                .match(Terminated.class, t -> processTerminated(t,repliesSoFar,stillWaiting))
-                .match(CollectionTimeout.class, c -> processCollectionTimeout(c,repliesSoFar,stillWaiting))
+                .match(DeviceExample3.RespondTemperature.class, r -> processRespondTemperature(r, repliesSoFar, stillWaiting))
+                .match(Terminated.class, t -> processTerminated(t, repliesSoFar, stillWaiting))
+                .match(CollectionTimeout.class, c -> processCollectionTimeout(c, repliesSoFar, stillWaiting))
                 .build();
     }
 
@@ -57,14 +59,14 @@ public class DeviceGroupQuery extends AbstractActor {
         Map<String, TemperatureReading> replies = new HashMap<>(repliesSoFar);
         for (ActorRef deviceActor : stillWaiting) {
             String deviceId = actorToDeviceId.get(deviceActor);
-            replies.put(deviceId,new DeviceTimeOut());
+            replies.put(deviceId, new DeviceTimeOut());
         }
-        requester.tell(new RespondAllTemperatures(requestId,replies),self());
+        requester.tell(new RespondAllTemperatures(requestId, replies), self());
         getContext().stop(getSelf());
     }
 
     private void processTerminated(Terminated t, Map<String, TemperatureReading> repliesSoFar, Set<ActorRef> stillWaiting) {
-        receiveResponse(t.getActor(),new DeviceNotAvailable(),stillWaiting,repliesSoFar);
+        receiveResponse(t.getActor(), new DeviceNotAvailable(), stillWaiting, repliesSoFar);
     }
 
     private void processRespondTemperature(DeviceExample3.RespondTemperature r, Map<String, TemperatureReading> repliesSoFar, Set<ActorRef> stillWaiting) {
@@ -72,7 +74,7 @@ public class DeviceGroupQuery extends AbstractActor {
         TemperatureReading reading = r.getValue()
                 .map(v -> (TemperatureReading) new Temperature(v))
                 .orElse(new TemperatureNotAvailable());
-        receiveResponse(deviceActor,reading,stillWaiting,repliesSoFar);
+        receiveResponse(deviceActor, reading, stillWaiting, repliesSoFar);
     }
 
     public void receiveResponse(ActorRef deviceActor, TemperatureReading reading, Set<ActorRef> stillWaiting,

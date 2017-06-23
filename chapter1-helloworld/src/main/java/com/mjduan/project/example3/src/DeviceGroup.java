@@ -13,9 +13,11 @@ import akka.actor.Props;
 import akka.actor.Terminated;
 import akka.event.Logging;
 import akka.event.LoggingAdapter;
+
+import scala.concurrent.duration.FiniteDuration;
+
 import lombok.Getter;
 import lombok.Setter;
-import scala.concurrent.duration.FiniteDuration;
 
 import com.mjduan.project.example3.src.manager.RequestTrackDevice;
 
@@ -41,13 +43,13 @@ public class DeviceGroup extends AbstractActor {
         return receiveBuilder()
                 .match(RequestTrackDevice.class, this::processRequestTrackDevice)
                 .match(RequestDeviceList.class, this::onDeviceList)
-                .match(RequestAllTemperatures.class,this::processRequestAllTemperatures)
+                .match(RequestAllTemperatures.class, this::processRequestAllTemperatures)
                 .match(Terminated.class, this::processOnTerminated)
                 .build();
     }
 
     private void processRequestAllTemperatures(RequestAllTemperatures r) {
-        getContext().actorOf(DeviceGroupQuery.props(actorToDeviceId,r.getRequestId(),getSender(),new FiniteDuration(3, TimeUnit.SECONDS)));
+        getContext().actorOf(DeviceGroupQuery.props(actorToDeviceId, r.getRequestId(), getSender(), new FiniteDuration(3, TimeUnit.SECONDS)));
     }
 
     private void processRequestTrackDevice(RequestTrackDevice r) {
@@ -114,7 +116,7 @@ public class DeviceGroup extends AbstractActor {
 
     @Getter
     @Setter
-    public static final class RequestAllTemperatures{
+    public static final class RequestAllTemperatures {
         final long requestId;
 
         public RequestAllTemperatures(long requestId) {
@@ -126,7 +128,7 @@ public class DeviceGroup extends AbstractActor {
     @Setter
     public static final class RespondAllTemperatures {
         final long requestId;
-        final Map<String,DeviceGroupQuery.TemperatureReading> temperatures;
+        final Map<String, DeviceGroupQuery.TemperatureReading> temperatures;
 
         public RespondAllTemperatures(long requestId, Map<String, DeviceGroupQuery.TemperatureReading> temperatures) {
             this.requestId = requestId;
