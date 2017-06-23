@@ -36,6 +36,10 @@ public class Test4_gracefulStop {
         managerActor.tell(Manager.ShutDown.SHUT_DOWN, testKit.getRef());
         managerActor.tell("mission", testKit.getRef());
         testKit.expectMsg("Service unavailable");
+
+        //send a message again
+        managerActor.tell("mission", testKit.getRef());
+        testKit.expectMsg("Service unavailable");
     }
 
     public static final class Manager extends AbstractActor {
@@ -58,7 +62,7 @@ public class Test4_gracefulStop {
                     .matchEquals(ShutDown.SHUT_DOWN, s -> {
                         LOG.info("Manager receive shutdown message");
                         worker.tell(PoisonPill.getInstance(), getSelf());
-                        getContext().become(shuttingDown());
+                        getContext().become(shuttingDown(), true);
                     })
                     .build();
         }
