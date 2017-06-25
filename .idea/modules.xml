@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ProjectModuleManager">
+    <modules>
+      <module fileurl="file://$PROJECT_DIR$/Akka-learn.iml" filepath="$PROJECT_DIR$/Akka-learn.iml" />
+      <module fileurl="file://$PROJECT_DIR$/chapter1-helloworld/chapter1-helloworld.iml" filepath="$PROJECT_DIR$/chapter1-helloworld/chapter1-helloworld.iml" />
+      <module fileurl="file://$PROJECT_DIR$/chapter2-router/chapter2-router.iml" filepath="$PROJECT_DIR$/chapter2-router/chapter2-router.iml" />
+      <module fileurl="file://$PROJECT_DIR$/chapter3-actors/chapter3-actors.iml" filepath="$PROJECT_DIR$/chapter3-actors/chapter3-actors.iml" />
+    </modules>
+  </component>
+</project>
