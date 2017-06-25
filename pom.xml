@@ -9,6 +9,7 @@
     <module>chapter1-helloworld</module>
     <module>chapter2-router</module>
     <module>chapter3-actors</module>
+      <module>chapter4-stream</module>
   </modules>
   <packaging>pom</packaging>
 
