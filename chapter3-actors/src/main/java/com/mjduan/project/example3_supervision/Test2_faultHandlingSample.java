@@ -1,7 +1,5 @@
 package com.mjduan.project.example3_supervision;
 
-import javax.naming.ServiceUnavailableException;
-
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -43,15 +41,15 @@ public class Test2_faultHandlingSample {
 
     public static void main(String[] args) {
         Config config = ConfigFactory.parseString(
-                "akka.loglevel=\"DEBUG\"\n" +
+                "akka.loglevel=\"info\"\n" +
                         "akka.actor.debug {\n" +
                         "  receive = on\n" +
                         "  lifecycle = on\n" +
                         "}\n");
         ActorSystem system = ActorSystem.create("faultHandlingSystem", config);
 
-        ActorRef workerActor = system.actorOf(Worker.props(), "worker");
-        ActorRef listenerActor = system.actorOf(Listener.props(), "listener");
+        ActorRef workerActor = system.actorOf(WorkerActor.props(), "worker");
+        ActorRef listenerActor = system.actorOf(ListenerActor.props(), "listener");
 
         workerActor.tell(Start, listenerActor);
     }
@@ -114,8 +112,6 @@ public class Test2_faultHandlingSample {
                 super(msg);
             }
         }
-
-
     }
 
     public interface CounterApi {
@@ -179,10 +175,10 @@ public class Test2_faultHandlingSample {
         }
     }
 
-    public static final class Listener extends AbstractLoggingActor {
+    public static final class ListenerActor extends AbstractLoggingActor {
 
         public static Props props() {
-            return Props.create(Listener.class);
+            return Props.create(ListenerActor.class);
         }
 
         @Override
@@ -204,7 +200,7 @@ public class Test2_faultHandlingSample {
         }
 
         private void process(WorkerApi.Process p) {
-            log().info("Current progress:{} %", p.percent);
+            log().info("Current progress:{}%", p.percent);
             if (p.percent >= 100.0) {
                 log().info("That's all, shutting down");
                 getContext().getSystem().terminate();
@@ -212,18 +208,18 @@ public class Test2_faultHandlingSample {
         }
     }
 
-    public static final class Worker extends AbstractLoggingActor {
+    public static final class WorkerActor extends AbstractLoggingActor {
         private static final SupervisorStrategy strategy = new OneForOneStrategy(DeciderBuilder
                 .match(CountServiceApi.ServiceUnavailable.class, e -> SupervisorStrategy.stop())
                 .matchAny(any -> SupervisorStrategy.escalate())
                 .build());
         final Timeout askTimeout = new Timeout(Duration.create(5, TimeUnit.SECONDS));
-        final ActorRef countService = getContext().actorOf(CountService.props(), "counter");
+        final ActorRef countService = getContext().actorOf(CountServiceActor.props(), "counter");
         final int totalCount = 51;
         private ActorRef processListener;
 
         public static Props props() {
-            return Props.create(Worker.class);
+            return Props.create(WorkerActor.class);
         }
 
         @Override
@@ -250,10 +246,11 @@ public class Test2_faultHandlingSample {
                             .map(new Mapper<CountServiceApi.CurrentCount, WorkerApi.Process>() {
                                 @Override
                                 public WorkerApi.Process apply(CountServiceApi.CurrentCount parameter) {
-                                    return super.apply(parameter);
+                                    return new WorkerApi.Process(100.0 * parameter.count / totalCount);
                                 }
-                            }, getContext().dispatcher()), getContext().dispatcher())
-                    .to(processListener);
+                            }, getContext().dispatcher())
+                    , getContext().dispatcher()
+            ).to(processListener);
         }
 
         private void process(Object w) {
@@ -263,7 +260,7 @@ public class Test2_faultHandlingSample {
         }
     }
 
-    public static class CountService extends AbstractLoggingActor {
+    public static class CountServiceActor extends AbstractLoggingActor {
         static final Object Reconnect = "Reconnect";
         private static final SupervisorStrategy strategy = new OneForOneStrategy(3, Duration.create(5, TimeUnit.SECONDS), DeciderBuilder
                 .match(StorageApi.StorageException.class, e -> restart())
@@ -275,7 +272,7 @@ public class Test2_faultHandlingSample {
         ActorRef counter;
 
         public static Props props() {
-            return Props.create(CountService.class);
+            return Props.create(CountServiceActor.class);
         }
 
         @Override
@@ -289,7 +286,7 @@ public class Test2_faultHandlingSample {
         }
 
         private void initStorage() {
-            storage = getContext().watch(getContext().actorOf(Storage.props()));
+            storage = getContext().watch(getContext().actorOf(StorageActor.props()));
             if (counter != null) {
                 counter.tell(new CounterApi.UseStorage(storage), self());
             }
@@ -301,6 +298,7 @@ public class Test2_faultHandlingSample {
             return LoggingReceive.create(receiveBuilder()
                     .match(StorageApi.Entry.class, this::processEntry)
                     .match(CountServiceApi.Increment.class, this::processIncrement)
+                    .matchEquals(GetCurrentCount, this::forwardOrPlaceInBacklog)
                     .match(Terminated.class, this::processTerminated)
                     .matchEquals(Reconnect, r -> initStorage())
                     .build(), getContext());
@@ -309,18 +307,17 @@ public class Test2_faultHandlingSample {
         private void processTerminated(Terminated terminated) {
             storage = null;
             counter.tell(new CounterApi.UseStorage(null), self());
-            getContext().getSystem().scheduler().scheduleOnce(Duration.create(10, TimeUnit.SECONDS),
-                    self(), Reconnect, getContext().dispatcher(), null);
+            getContext().getSystem().scheduler().scheduleOnce(Duration.create(10, TimeUnit.SECONDS), self(), Reconnect, getContext().dispatcher(), null);
         }
 
-        private void processIncrement(CountServiceApi.Increment increment) throws ServiceUnavailableException {
+        private void processIncrement(CountServiceApi.Increment increment) {
             forwardOrPlaceInBacklog(increment);
         }
 
-        void forwardOrPlaceInBacklog(Object msg) throws ServiceUnavailableException {
+        void forwardOrPlaceInBacklog(Object msg) {
             if (counter == null) {
                 if (backlog.size() >= MAX_BACKLOG) {
-                    throw new ServiceUnavailableException("Counter service unavailable, lack of initial value");
+                    throw new CountServiceApi.ServiceUnavailable("CounterActor service unavailable, lack of initial value");
                 }
                 backlog.add(new SenderMsgPair(getSender(), msg));
             } else {
@@ -330,7 +327,7 @@ public class Test2_faultHandlingSample {
 
         private void processEntry(StorageApi.Entry entry) {
             long value = entry.value;
-            counter = getContext().actorOf(Counter.props(key, value));
+            counter = getContext().actorOf(CounterActor.props(key, value));
             counter.tell(new CounterApi.UseStorage(storage), self());
             for (SenderMsgPair each : backlog) {
                 counter.tell(each.msg, each.sender);
@@ -350,18 +347,18 @@ public class Test2_faultHandlingSample {
         }
     }
 
-    public static final class Counter extends AbstractLoggingActor {
+    public static final class CounterActor extends AbstractLoggingActor {
         final String key;
         long count;
         ActorRef storage;
 
-        public Counter(String key, long count) {
+        public CounterActor(String key, long count) {
             this.key = key;
             this.count = count;
         }
 
         public static Props props(String key, long count) {
-            return Props.create(Counter.class, key, count);
+            return Props.create(CounterActor.class, key, count);
         }
 
         @Override
@@ -388,11 +385,11 @@ public class Test2_faultHandlingSample {
         }
     }
 
-    public static final class Storage extends AbstractLoggingActor {
+    public static final class StorageActor extends AbstractLoggingActor {
         final DummyDB db = DummyDB.instance;
 
         public static Props props() {
-            return Props.create(Storage.class);
+            return Props.create(StorageActor.class);
         }
 
         @Override
