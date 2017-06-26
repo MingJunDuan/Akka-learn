@@ -10,6 +10,7 @@
     <module>chapter2-router</module>
     <module>chapter3-actors</module>
       <module>chapter4-stream</module>
+    <module>chapter5-futureAndAgent</module>
   </modules>
   <packaging>pom</packaging>
 
