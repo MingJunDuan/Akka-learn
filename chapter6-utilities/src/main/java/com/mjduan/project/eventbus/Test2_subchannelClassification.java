@@ -1,4 +1,4 @@
-package com.mjduan.project;
+package com.mjduan.project.eventbus;
 
 import akka.actor.AbstractActor;
 import akka.actor.ActorRef;
