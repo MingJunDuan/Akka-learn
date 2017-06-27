@@ -16,7 +16,7 @@ import org.junit.Test;
 /**
  * Hans 2017-06-27 22:52
  */
-public class Test4_eventstream {
+public class Test4_eventstream_deadLetter {
     private ActorSystem actorSystem;
 
     @Before
