@@ -1,4 +1,4 @@
-package com.mjduan.project;
+package com.mjduan.project.eventbus;
 
 import java.util.concurrent.TimeUnit;
 
@@ -50,7 +50,6 @@ public class Test3_actor_classfication {
         actorBus.publish(notification1);
         probe1.expectNoMsg(FiniteDuration.create(500, TimeUnit.MILLISECONDS));
         probe2.expectMsgEquals(notification1);
-
 
     }
     
